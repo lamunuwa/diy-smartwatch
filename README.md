@@ -46,8 +46,7 @@ ExpWatch is intended for experimentation and education, not mass production.
 hardware/
 ├── exports/
 ├── layout/
-├── schematic/
-└── 3D/
+└── schematic/
 
 src/
 └── modules/
