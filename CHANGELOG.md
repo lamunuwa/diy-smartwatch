@@ -5,6 +5,36 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## 2026-06-17
+### Added
+#### Documentation
+- Created `docs/` directory for project reference materials.
+- Added `docs/datasheets/` containing the DS3231MZ+ datasheet and the official Espressif ESP32 Hardware Design Guidelines PDF.
+- Added `docs/images/` directory and included an image asset for future use.
+
+#### Manufacturing Files
+- Created `fabrication/` directory containing all files required for PCB production:
+  - Gerber files (`.zip` archive).
+  - Bill of Materials (BOM).
+  - Pick and Place files for both sides of the PCB (Top/Bottom).
+
+### Exported
+#### Documentation
+- Exported a 3D view PDF (`3D.pdf`) showing both sides of the PCB layout, saved in `hardware/exports/`.
+
+## 2026-06-11
+### Added
+#### Hardware Layout
+- The same modules and components listed in the latest CHANGELOG update have been added and configured routed.
+- The schematic and layout have been completed, and the design has been prepared for the assembly.
+- Added `hardware/layout/project.fbrd`.
+
+### Exported
+#### Documentation
+- Exported the layout PDF from Fusion 360.
+- Added the generated file to the `exports/` directory.
+
 ## 2026-06-09
 ### Added
 #### Hardware Schematic
@@ -23,17 +53,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Exported
 #### Documentation
 - Exported the schematic PDF from Fusion 360.
-- Added the generated file to the `exports/` directory.
-
-## [Unreleased]
-## 2026-06-11
-### Added
-#### Hardware Layout
-- The same modules and components listed in the latest CHANGELOG update have been added and configured routed.
-- The schematic and layout have been completed, and the design has been prepared for the assembly.
-- Added `hardware/layout/project.fbrd`.
-
-### Exported
-#### Documentation
-- Exported the layout PDF from Fusion 360.
 - Added the generated file to the `exports/` directory.
