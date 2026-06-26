@@ -1,10 +1,10 @@
 /*
-* ExpWatch 
-* Version: v0.1.0
+* SmartWatch
+* Version: v0.2.0
 *
 * Descripción:
-* Se verifica el funcionamiento del ESP32, la comunicación I2C
-* y la pantalla OLED SSD1306.
+* Se incorpora un reloj por software utilizando RTC_Millis.
+* La pantalla OLED ahora muestra fecha y hora en tiempo real.
 */
 
 // includes
@@ -12,6 +12,7 @@
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <RTClib.h>
 
 // Configuración de hardware
 #define LED_DEBUG      2
@@ -31,22 +32,53 @@ Adafruit_SSD1306 display(
     -1
 );
 
-void mostrarPantallaInicio()
+// RTC por software
+RTC_Millis rtc;
+uint8_t ultimoSegundo = 255; // Evita redibujar cada ciclo
+
+// Imagen de la pantalla OLED
+void actualizarPantalla(DateTime ahora)
 {
     display.clearDisplay();
-
     display.setTextColor(SSD1306_WHITE);
 
-    display.setTextSize(2);
-    display.setCursor(10,12);
-    display.println("SMART");
-
-    display.setCursor(10,34);
-    display.println("WATCH");
+    //---------------------------------
 
     display.setTextSize(1);
-    display.setCursor(18,56);
-    display.println("Hardware OK");
+    display.setCursor(18,0);
+    display.println("SMARTWATCH");
+
+    //---------------------------------
+
+    display.setTextSize(2);
+    display.setCursor(12,22);
+
+    if(ahora.hour()<10) display.print('0');
+    display.print(ahora.hour());
+    display.print(':');
+
+    if(ahora.minute()<10) display.print('0');
+    display.print(ahora.minute());
+    display.print(':');
+
+    if(ahora.second()<10) display.print('0');
+    display.print(ahora.second());
+
+    //---------------------------------
+
+    display.setTextSize(1);
+    display.setCursor(22,52);
+
+    if(ahora.day()<10) display.print('0');
+    display.print(ahora.day());
+    display.print('/');
+
+    if(ahora.month()<10) display.print('0');
+    display.print(ahora.month());
+    display.print('/');
+    display.print(ahora.year());
+
+    //---------------------------------
 
     display.display();
 }
@@ -54,14 +86,14 @@ void mostrarPantallaInicio()
 // Configuración inicial del sistema
 void setup()
 {
-    pinMode(LED_DEBUG, OUTPUT);
-    digitalWrite(LED_DEBUG, HIGH);
+    pinMode(LED_DEBUG,OUTPUT);
+    digitalWrite(LED_DEBUG,HIGH);
 
-    pinMode(BTN_ADELANTE, INPUT_PULLUP);
-    pinMode(BTN_ATRAS, INPUT_PULLUP);
+    pinMode(BTN_ADELANTE,INPUT_PULLUP);
+    pinMode(BTN_ATRAS,INPUT_PULLUP);
 
-    pinMode(MOTOR_PIN, OUTPUT);
-    digitalWrite(MOTOR_PIN, LOW);
+    pinMode(MOTOR_PIN,OUTPUT);
+    digitalWrite(MOTOR_PIN,LOW);
 
     Serial.begin(115200);
 
@@ -70,39 +102,51 @@ void setup()
     Serial.println();
     Serial.println(" SmartWatch OK");
 
-    Wire.begin(I2C_SDA, I2C_SCL);
+    Wire.begin(I2C_SDA,I2C_SCL);
     Wire.setClock(100000);
 
-    if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C))
+    if(!display.begin(SSD1306_SWITCHCAPVCC,0x3C))
     {
         Serial.println("ERROR: OLED no encontrada");
 
-        while (true)
+        while(true)
         {
             digitalWrite(LED_DEBUG,!digitalRead(LED_DEBUG));
             delay(200);
         }
     }
 
-    Serial.println("OLED inicializada correctamente");
+    rtc.begin(DateTime(2025,1,1,12,0,0));
 
-    mostrarPantallaInicio();
+    actualizarPantalla(rtc.now());
+
+    Serial.println("RTC iniciado");
 }
 
 // Bucle principal del sistema
 void loop()
 {
-    static unsigned long tiempoAnterior = 0;
-    static bool estadoLed = true;
-
-    if (millis() - tiempoAnterior >= 500)
+    DateTime ahora = rtc.now();
+    if(ahora.second()!=ultimoSegundo) // Actualiza únicamente cuando cambia el segundo
     {
-        tiempoAnterior = millis();
+        ultimoSegundo=ahora.second();
+        actualizarPantalla(ahora);
 
-        estadoLed = !estadoLed;
+        Serial.print("Hora: ");
 
-        digitalWrite(LED_DEBUG, estadoLed);
+        if(ahora.hour()<10) Serial.print('0');
+        Serial.print(ahora.hour());
 
-        Serial.println("Sistema OK");
+        Serial.print(':');
+
+        if(ahora.minute()<10) Serial.print('0');
+        Serial.print(ahora.minute());
+
+        Serial.print(':');
+
+        if(ahora.second()<10) Serial.print('0');
+        Serial.println(ahora.second());
     }
+
+    delay(10);
 }
