@@ -6,6 +6,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-06-25
+### Added
+#### Firmware
+- Integrated digital clock functionality using the DS3231 RTC module and `millis()` for timekeeping.
+- Configured the SSD1306 OLED display to show the current time and date in real-time.
+- Created initial firmware baseline to verify ESP32 core functionality and I2C bus communication with the SSD1306 OLED screen.
+
+### Fixed
+#### Documentation
+- Corrected typos, titles, and general text formatting across project PDF files.
+
+---
+
 ## 2026-06-17
 ### Added
 #### Documentation
