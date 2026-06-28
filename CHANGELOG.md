@@ -6,7 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.2.0] - 2026-06-25
+## 2026-06-27
+### Added
+#### Firmware
+- Migrated timekeeping from software-based `RTC_Millis` to hardware-based `RTC_DS3231` for high-precision PCB timing.
+- Implemented a Finite State Machine (FSM) for navigation using a `EstadosPantalla` enum with three defined states: `MENU_HORA`, `MENU_ALARMAS` y `MENU_OXIMETRO`.
+- Added hardware button control (`BTN_ADELANTE` and `BTN_ATRAS`) featuring basic software debouncing and cyclic menu iteration via modular arithmetic.
+- Refactored the display rendering architecture; `actualizarPantalla` now utilizes a `switch` block to independently render active menus, including visual placeholders for upcoming alarm and oximeter sensor integrations.
+
+---
+
+## 2026-06-25
 ### Added
 #### Firmware
 - Integrated digital clock functionality using the DS3231 RTC module and `millis()` for timekeeping.
