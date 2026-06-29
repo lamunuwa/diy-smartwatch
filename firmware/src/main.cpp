@@ -1,11 +1,11 @@
 /*
  * SmartWatch
- * Version: v0.3.0
+ * Version: v0.4.0
  *
  * Descripción:
- * Se migra el reloj simulado a un RTC por hardware real (DS3231) montado en el PCB.
- * Se implementa la máquina de estados para la navegación cíclica de menús:
- * Hora, Alarmas y Oxímetro usando los botones físicos.
+ * Se agregaron recursos gráficos (iconos de 8x8) almacenados en PROGMEM.
+ * Se implementa el sistema de Bloqueo/Desbloqueo de interfaz mediante la
+ * pulsación simultánea de ambos botones físicos, protegiendo los menús.
  */
 
 // includes
@@ -25,6 +25,19 @@
 #define BTN_ATRAS      27
 #define MOTOR_PIN      14
 
+// Iconos
+const unsigned char PROGMEM lock_icon[] = {
+    0x3c, 0x42, 0x42, 0xff, 0xff, 0xff, 0xff, 0xff
+};
+
+const unsigned char PROGMEM unlock_icon[] = {
+    0x3c, 0x02, 0x02, 0xff, 0xff, 0xff, 0xff, 0xff
+};
+
+const unsigned char PROGMEM heart_icon[] = {
+    0x66, 0xff, 0xff, 0xff, 0x7e, 0x3c, 0x18, 0x00
+};
+
 // Configuración de la pantalla OLED
 Adafruit_SSD1306 display(
     SCREEN_WIDTH,
@@ -33,19 +46,22 @@ Adafruit_SSD1306 display(
     -1
 );
 
-// RTC Real por Hardware (DS3231 del PCB)
+// RTC Real por Hardware
 RTC_DS3231 rtc;
-uint8_t ultimoSegundo = 255; // Evita redibujar cada ciclo si no cambia el tiempo
+uint8_t ultimoSegundo = 255; 
 
 // Máquina de estados para los Menús
 enum EstadosPantalla { MENU_HORA, MENU_ALARMAS, MENU_OXIMETRO, TOTAL_MENUS };
 EstadosPantalla menuActual = MENU_HORA;
 
-// Variables de control de botones (Debounce básico)
+// Control de Seguridad de Interfaz
+bool pantallaBloqueada = true; 
+
+// Control de Tiempos de Botones (Debounce)
 unsigned long ultimoTiempoBoton = 0;
 const unsigned long tiempoDebounce = 250; 
 
-// Renderizado OLED según el menú actual
+// Renderizado dinámico de la pantalla OLED
 void actualizarPantalla(DateTime ahora)
 {
     display.clearDisplay();
@@ -55,6 +71,13 @@ void actualizarPantalla(DateTime ahora)
     display.setTextSize(1);
     display.setCursor(0, 0);
     display.print("INNOVATEK 2026");
+
+    // Dibujar icono de bloqueo según el estado actual en la esquina superior derecha (120, 0)
+    if (pantallaBloqueada) {
+        display.drawBitmap(120, 0, lock_icon, 8, 8, SSD1306_WHITE); 
+    } else {
+        display.drawBitmap(120, 0, unlock_icon, 8, 8, SSD1306_WHITE); 
+    }
 
     // Lógica de renderizado por menú
     switch (menuActual) 
@@ -97,11 +120,15 @@ void actualizarPantalla(DateTime ahora)
             
             display.setTextSize(2);
             display.setCursor(10, 34);
-            display.print("> 30 Seg"); // Placeholder inicial de alarma
+            display.print("> 30 Seg"); 
             
             display.setTextSize(1);
             display.setCursor(0, 56);
-            display.print("Bloquea para configurar");
+            if (pantallaBloqueada) {
+                display.print("Manten ATRAS para activar");
+            } else {
+                display.print("Bloquea para configurar");
+            }
             break;
         }
 
@@ -110,6 +137,9 @@ void actualizarPantalla(DateTime ahora)
             display.setTextSize(1);             
             display.setCursor(0, 16); 
             display.print("PULSO Y OXIGENO:");
+            
+            // Renderizar icono de corazón al lado de las lecturas
+            display.drawBitmap(10, 34, heart_icon, 8, 8, SSD1306_WHITE);
             
             display.setCursor(24, 34);
             display.print("Coloque dedo...");
@@ -144,7 +174,6 @@ void setup()
     Wire.begin(I2C_SDA, I2C_SCL);
     Wire.setClock(100000);
 
-    // Inicialización de la pantalla OLED
     if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C))
     {
         Serial.println("ERROR: OLED no encontrada");
@@ -155,22 +184,19 @@ void setup()
         }
     }
 
-    // Inicialización del RTC físico
     if (!rtc.begin()) 
     {
         Serial.println("ERROR: No se encuentra módulo RTC");
         while(true);
     }
 
-    // Si el RTC perdió la energía, se fuerza la hora de compilación original
     if (rtc.lostPower()) 
     {
-        Serial.println("RTC perdió energía, configurando hora...");
         rtc.adjust(DateTime(2026, 6, 17, 10, 23, 0)); 
     }
 
     actualizarPantalla(rtc.now());
-    Serial.println("RTC de Hardware Inicializado");
+    Serial.println("v0.4.0 Recursos Gráficos y Candado OK");
 }
 
 // Bucle principal del sistema
@@ -179,46 +205,48 @@ void loop()
     unsigned long tiempoActualMillis = millis();
     DateTime ahora = rtc.now();
 
-    // --- NAVEGACIÓN DE MENÚS (Lectura de Botones Físicos con Debounce) ---
+    // Control de botones con debounce y bloqueo de interfaz
     if ((tiempoActualMillis - ultimoTiempoBoton) > tiempoDebounce) 
     {
-        // Botón Adelante avanza en los menús de manera cíclica
-        if (digitalRead(BTN_ADELANTE) == LOW) 
+        bool leerBtnAdelante = (digitalRead(BTN_ADELANTE) == LOW);
+        bool leerBtnAtras = (digitalRead(BTN_ATRAS) == LOW);
+
+        // COMBINACIÓN: Si ambos botones se presionan al mismo tiempo
+        if (leerBtnAdelante && leerBtnAtras) 
+        {
+            pantallaBloqueada = !pantallaBloqueada; // Invierte el estado de bloqueo
+            ultimoTiempoBoton = tiempoActualMillis;
+            actualizarPantalla(ahora);
+            Serial.print("[INTERFAZ] Estado de bloqueo cambiado a: "); Serial.println(pantallaBloqueada);
+            delay(250); // Delay de estabilidad mecánica provisional
+        }
+        // Acción de Botón Adelante (Solo si está desbloqueado)
+        else if (leerBtnAdelante && !pantallaBloqueada) 
         {
             menuActual = static_cast<EstadosPantalla>((menuActual + 1) % TOTAL_MENUS);
             ultimoTiempoBoton = tiempoActualMillis;
             actualizarPantalla(ahora);
-            Serial.print("Menú Cambiado a: "); Serial.println(menuActual);
+            Serial.print("Menú -> "); Serial.println(menuActual);
         }
-        // Botón Atrás retrocede en los menús de manera cíclica
-        else if (digitalRead(BTN_ATRAS) == LOW) 
+        // Acción de Botón Atrás (Solo si está desbloqueado)
+        else if (leerBtnAtras && !pantallaBloqueada) 
         {
             menuActual = static_cast<EstadosPantalla>((menuActual - 1 + TOTAL_MENUS) % TOTAL_MENUS);
             ultimoTiempoBoton = tiempoActualMillis;
             actualizarPantalla(ahora);
-            Serial.print("Menú Cambiado a: "); Serial.println(menuActual);
+            Serial.print("Menú <- "); Serial.println(menuActual);
         }
     }
 
-    // --- ACTUALIZACIÓN POR SEGUNDO (Menú Hora) ---
-    if (menuActual == MENU_HORA) 
+    // Para evitar el parpadeo de la pantalla, solo actualizamos la pantalla si ha cambiado el segundo actual y no estamos en el menú de oxímetro
+    if (menuActual != MENU_OXIMETRO) 
     {
         if (ahora.second() != ultimoSegundo) 
         {
             ultimoSegundo = ahora.second();
             actualizarPantalla(ahora);
-
-            Serial.print("Hora RTC: ");
-            if(ahora.hour() < 10) Serial.print('0');
-            Serial.print(ahora.hour());
-            Serial.print(':');
-            if(ahora.minute() < 10) Serial.print('0');
-            Serial.print(ahora.minute());
-            Serial.print(':');
-            if(ahora.second() < 10) Serial.print('0');
-            Serial.println(ahora.second());
         }
     }
     
-    delay(10);
+    delay(1);
 }
