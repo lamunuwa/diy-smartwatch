@@ -1,11 +1,11 @@
 /*
  * SmartWatch
- * Version: v0.4.0
+ * Version: v0.5.0
  *
  * Descripción:
- * Se agregaron recursos gráficos (iconos de 8x8) almacenados en PROGMEM.
- * Se implementa el sistema de Bloqueo/Desbloqueo de interfaz mediante la
- * pulsación simultánea de ambos botones físicos, protegiendo los menús.
+ * Se elimina el delay mecánico y se implementa la ventana de tolerancia (80ms)
+ * para detectar la combinación de doble botón de forma asíncrona.
+ * Se integra el arreglo de tiempos de alarma y la navegación entre opciones.
  */
 
 // includes
@@ -39,214 +39,244 @@ const unsigned char PROGMEM heart_icon[] = {
 };
 
 // Configuración de la pantalla OLED
-Adafruit_SSD1306 display(
-    SCREEN_WIDTH,
-    SCREEN_HEIGHT,
-    &Wire,
-    -1
-);
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
 // RTC Real por Hardware
 RTC_DS3231 rtc;
-uint8_t ultimoSegundo = 255; 
+uint8_t ultimoSegundoRegistrado = 99; 
 
 // Máquina de estados para los Menús
 enum EstadosPantalla { MENU_HORA, MENU_ALARMAS, MENU_OXIMETRO, TOTAL_MENUS };
 EstadosPantalla menuActual = MENU_HORA;
 
-// Control de Seguridad de Interfaz
 bool pantallaBloqueada = true; 
 
-// Control de Tiempos de Botones (Debounce)
+// Historial Mecánico
 unsigned long ultimoTiempoBoton = 0;
-const unsigned long tiempoDebounce = 250; 
+const unsigned long tiempoDebounce = 200; 
+
+unsigned long tiempoPrimerBoton = 0;
+bool esperandoCombinacion = false;
+bool adelantePresionadoPrimero = false;
+bool atrasPresionadoPrimero = false;
+const unsigned long ventanaTolerancia = 80; 
+
+// Lista de Alarmas
+const int TOTAL_OPCIONES = 5;
+String listaAlarmas[TOTAL_OPCIONES] = {"30 Seg", "1 Min", "10 Min", "30 Min", "1 Hora"};
+int segundosAlarma[TOTAL_OPCIONES] = {30, 60, 600, 1800, 3600};
+int alarmaSeleccionada = 0; 
+
+bool alarmaActivaYCorriendo = false;
 
 // Renderizado dinámico de la pantalla OLED
-void actualizarPantalla(DateTime ahora)
+void actualizarPantalla(DateTime tiempoAhoraRTC)
 {
     display.clearDisplay();
-    display.setTextColor(SSD1306_WHITE);
-
-    // Encabezado del sistema
-    display.setTextSize(1);
-    display.setCursor(0, 0);
+    display.setTextSize(1);             
+    display.setTextColor(SSD1306_WHITE); 
+    display.setCursor(0, 0); 
     display.print("INNOVATEK 2026");
-
-    // Dibujar icono de bloqueo según el estado actual en la esquina superior derecha (120, 0)
+    
     if (pantallaBloqueada) {
         display.drawBitmap(120, 0, lock_icon, 8, 8, SSD1306_WHITE); 
     } else {
         display.drawBitmap(120, 0, unlock_icon, 8, 8, SSD1306_WHITE); 
     }
 
-    // Lógica de renderizado por menú
-    switch (menuActual) 
-    {
-        case MENU_HORA: 
-        {
-            display.setTextSize(2);
-            display.setCursor(16, 24);
-
-            if(ahora.hour() < 10) display.print('0');
-            display.print(ahora.hour());
+    switch (menuActual) {
+        case MENU_HORA: {
+            display.setCursor(16, 24); 
+            display.setTextSize(2);             
+            if(tiempoAhoraRTC.hour() < 10) display.print('0');
+            display.print(tiempoAhoraRTC.hour(), DEC);
             display.print(':');
-
-            if(ahora.minute() < 10) display.print('0');
-            display.print(ahora.minute());
+            if(tiempoAhoraRTC.minute() < 10) display.print('0');
+            display.print(tiempoAhoraRTC.minute(), DEC);
             display.print(':');
-
-            if(ahora.second() < 10) display.print('0');
-            display.print(ahora.second());
+            if(tiempoAhoraRTC.second() < 10) display.print('0');
+            display.print(tiempoAhoraRTC.second(), DEC);
 
             display.setTextSize(1);
             display.setCursor(32, 52);
-
-            if(ahora.day() < 10) display.print('0');
-            display.print(ahora.day());
+            if(tiempoAhoraRTC.day() < 10) display.print('0');
+            display.print(tiempoAhoraRTC.day(), DEC);
             display.print('/');
-
-            if(ahora.month() < 10) display.print('0');
-            display.print(ahora.month());
+            if(tiempoAhoraRTC.month() < 10) display.print('0');
+            display.print(tiempoAhoraRTC.month(), DEC);
             display.print('/');
-            display.print(ahora.year());
+            display.print(tiempoAhoraRTC.year(), DEC);
             break;
         }
 
-        case MENU_ALARMAS: 
-        {
-            display.setTextSize(1);             
-            display.setCursor(0, 20); 
-            display.print("SELECCIONAR TIEMPO:");
-            
-            display.setTextSize(2);
-            display.setCursor(10, 34);
-            display.print("> 30 Seg"); 
-            
-            display.setTextSize(1);
-            display.setCursor(0, 56);
-            if (pantallaBloqueada) {
-                display.print("Manten ATRAS para activar");
-            } else {
-                display.print("Bloquea para configurar");
+        case MENU_ALARMAS: {
+            if (alarmaActivaYCorriendo) {
+                // Lógica de renderizado de cuenta regresiva
+            } 
+            else {
+                display.setTextSize(1);             
+                display.setCursor(0, 20); 
+                display.print("SELECCIONAR TIEMPO:");
+                
+                display.setTextSize(2);
+                display.setCursor(10, 34);
+                display.print("> " + listaAlarmas[alarmaSeleccionada]);
+                
+                display.fillRect(0, 56, 128, 8, SSD1306_BLACK); 
+                display.setTextSize(1);
+                display.setCursor(0, 56);
+                if (pantallaBloqueada) {
+                    display.print("Manten ATRAS para activar");
+                } else {
+                    display.print("Bloquea para configurar");
+                }
             }
             break;
         }
 
-        case MENU_OXIMETRO: 
-        {
+        case MENU_OXIMETRO: {
             display.setTextSize(1);             
             display.setCursor(0, 16); 
             display.print("PULSO Y OXIGENO:");
             
-            // Renderizar icono de corazón al lado de las lecturas
             display.drawBitmap(10, 34, heart_icon, 8, 8, SSD1306_WHITE);
-            
+            display.setTextSize(1);
             display.setCursor(24, 34);
             display.print("Coloque dedo...");
-            
             display.setCursor(24, 48);
             display.print("Leyendo...");
             break;
         }
     }
-
-    display.display();
+    display.display(); 
 }
 
-// Configuración inicial del sistema
 void setup()
 {
     pinMode(LED_DEBUG, OUTPUT);
     digitalWrite(LED_DEBUG, HIGH);
-
+    
     pinMode(BTN_ADELANTE, INPUT_PULLUP);
     pinMode(BTN_ATRAS, INPUT_PULLUP);
 
     pinMode(MOTOR_PIN, OUTPUT);
-    digitalWrite(MOTOR_PIN, LOW);
+    digitalWrite(MOTOR_PIN, LOW); 
 
     Serial.begin(115200);
-    delay(1000);
-
-    Serial.println();
-    Serial.println(" SmartWatch OK");
+    delay(1000); 
 
     Wire.begin(I2C_SDA, I2C_SCL);
-    Wire.setClock(100000);
+    Wire.setClock(100000); 
 
-    if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C))
-    {
-        Serial.println("ERROR: OLED no encontrada");
-        while(true)
-        {
-            digitalWrite(LED_DEBUG, !digitalRead(LED_DEBUG));
-            delay(200);
-        }
+    if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { 
+        while(true); 
     }
-
-    if (!rtc.begin()) 
-    {
-        Serial.println("ERROR: No se encuentra módulo RTC");
+    
+    if (!rtc.begin()) {
         while(true);
     }
 
-    if (rtc.lostPower()) 
-    {
+    if (rtc.lostPower()) {
         rtc.adjust(DateTime(2026, 6, 17, 10, 23, 0)); 
     }
 
     actualizarPantalla(rtc.now());
-    Serial.println("v0.4.0 Recursos Gráficos y Candado OK");
 }
 
-// Bucle principal del sistema
 void loop()
 {
     unsigned long tiempoActualMillis = millis();
-    DateTime ahora = rtc.now();
+    DateTime tiempoAhoraRTC = rtc.now();
 
+    bool leerBtnAdelante = (digitalRead(BTN_ADELANTE) == LOW);
+    bool leerBtnAtras = (digitalRead(BTN_ATRAS) == LOW);
+    
     // Control de botones con debounce y bloqueo de interfaz
-    if ((tiempoActualMillis - ultimoTiempoBoton) > tiempoDebounce) 
-    {
-        bool leerBtnAdelante = (digitalRead(BTN_ADELANTE) == LOW);
-        bool leerBtnAtras = (digitalRead(BTN_ATRAS) == LOW);
+    if ((tiempoActualMillis - ultimoTiempoBoton) > tiempoDebounce) {
+        
+        // Detección inmediata si ambos bajan en el mismo ciclo exacto
+        if (leerBtnAdelante && leerBtnAtras) {
+            pantallaBloqueada = !pantallaBloqueada;
+            ultimoTiempoBoton = tiempoActualMillis;
+            esperandoCombinacion = false;
+            adelantePresionadoPrimero = false;
+            atrasPresionadoPrimero = false;
+            actualizarPantalla(tiempoAhoraRTC); 
+            delay(250); 
+        }
+        // Llegó Adelante primero, abrimos ventana de espera sutil
+        else if (leerBtnAdelante && !esperandoCombinacion) {
+            tiempoPrimerBoton = tiempoActualMillis;
+            esperandoCombinacion = true;
+            adelantePresionadoPrimero = true;
+            atrasPresionadoPrimero = false;
+        }
+        // Llegó Atrás primero, abrimos ventana de espera sutil
+        else if (leerBtnAtras && !esperandoCombinacion) {
+            tiempoPrimerBoton = tiempoActualMillis;
+            esperandoCombinacion = true;
+            atrasPresionadoPrimero = true;
+            adelantePresionadoPrimero = false;
+        }
 
-        // COMBINACIÓN: Si ambos botones se presionan al mismo tiempo
-        if (leerBtnAdelante && leerBtnAtras) 
-        {
-            pantallaBloqueada = !pantallaBloqueada; // Invierte el estado de bloqueo
-            ultimoTiempoBoton = tiempoActualMillis;
-            actualizarPantalla(ahora);
-            Serial.print("[INTERFAZ] Estado de bloqueo cambiado a: "); Serial.println(pantallaBloqueada);
-            delay(250); // Delay de estabilidad mecánica provisional
-        }
-        // Acción de Botón Adelante (Solo si está desbloqueado)
-        else if (leerBtnAdelante && !pantallaBloqueada) 
-        {
-            menuActual = static_cast<EstadosPantalla>((menuActual + 1) % TOTAL_MENUS);
-            ultimoTiempoBoton = tiempoActualMillis;
-            actualizarPantalla(ahora);
-            Serial.print("Menú -> "); Serial.println(menuActual);
-        }
-        // Acción de Botón Atrás (Solo si está desbloqueado)
-        else if (leerBtnAtras && !pantallaBloqueada) 
-        {
-            menuActual = static_cast<EstadosPantalla>((menuActual - 1 + TOTAL_MENUS) % TOTAL_MENUS);
-            ultimoTiempoBoton = tiempoActualMillis;
-            actualizarPantalla(ahora);
-            Serial.print("Menú <- "); Serial.println(menuActual);
+        // Procesamiento de la ventana de tolerancia (80 ms)
+        if (esperandoCombinacion) {
+            if (adelantePresionadoPrimero && leerBtnAtras) {
+                pantallaBloqueada = !pantallaBloqueada;
+                ultimoTiempoBoton = tiempoActualMillis;
+                esperandoCombinacion = false;
+                adelantePresionadoPrimero = false;
+                actualizarPantalla(tiempoAhoraRTC);
+                delay(250);
+            }
+            else if (atrasPresionadoPrimero && leerBtnAdelante) {
+                pantallaBloqueada = !pantallaBloqueada;
+                ultimoTiempoBoton = tiempoActualMillis;
+                esperandoCombinacion = false;
+                atrasPresionadoPrimero = false;
+                actualizarPantalla(tiempoAhoraRTC);
+                delay(250);
+            }
+            // Si expiró el tiempo de espera, se procesa como una pulsación de botón individual
+            else if (tiempoActualMillis - tiempoPrimerBoton >= ventanaTolerancia) {
+                esperandoCombinacion = false;
+
+                if (adelantePresionadoPrimero) {
+                    adelantePresionadoPrimero = false;
+                    ultimoTiempoBoton = tiempoActualMillis;
+                    
+                    if (!pantallaBloqueada) {
+                        // Cambiar de menú hacia adelante si la pantalla está libre
+                        menuActual = static_cast<EstadosPantalla>((menuActual + 1) % TOTAL_MENUS); 
+                        actualizarPantalla(tiempoAhoraRTC);
+                    } 
+                    else if (pantallaBloqueada && menuActual == MENU_ALARMAS && !alarmaActivaYCorriendo) {
+                        // Modificar alarma elegida en modo bloqueado
+                        alarmaSeleccionada = (alarmaSeleccionada + 1) % TOTAL_OPCIONES;
+                        actualizarPantalla(tiempoAhoraRTC);
+                    }
+                }
+                else if (atrasPresionadoPrimero) {
+                    atrasPresionadoPrimero = false;
+                    ultimoTiempoBoton = tiempoActualMillis;
+
+                    if (!pantallaBloqueada) {
+                        // Cambiar de menú hacia atrás si la pantalla está libre
+                        menuActual = static_cast<EstadosPantalla>((menuActual - 1 + TOTAL_MENUS) % TOTAL_MENUS); 
+                        actualizarPantalla(tiempoAhoraRTC);
+                    }
+                }
+            }
         }
     }
 
-    // Para evitar el parpadeo de la pantalla, solo actualizamos la pantalla si ha cambiado el segundo actual y no estamos en el menú de oxímetro
-    if (menuActual != MENU_OXIMETRO) 
-    {
-        if (ahora.second() != ultimoSegundo) 
-        {
-            ultimoSegundo = ahora.second();
-            actualizarPantalla(ahora);
+    // --- REDIBUJAR PANTALLA INTELIGENTE POR SEGUNDO ---
+    if (menuActual != MENU_OXIMETRO) {
+        if (tiempoAhoraRTC.second() != ultimoSegundoRegistrado) {
+            ultimoSegundoRegistrado = tiempoAhoraRTC.second();
+            actualizarPantalla(tiempoAhoraRTC);
         }
     }
     
-    delay(1);
+    delay(1); 
 }
