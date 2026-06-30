@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## 2026-06-29
+## [1.0.0] - 2026-06-29 [RELEASED]
 ### Added
 #### Firmware
 - Integrated full hardware support for the `MAX30100_PulseOximeter` sensor with asynchronous sampling every 500ms and active power management (`shutdown`/`begin`) during menu transitions.
@@ -19,13 +19,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### Documentation
 - Added `IRL.jpeg` to `docs/images/` featuring an unedited reference photo of the fully assembled and operational hardware prototype.
 
-## 2026-06-29
+---
+
+## [0.5.0] - 2026-06-29
 ### Added
 #### Firmware
 - Developed an interface lock screen safety state machine (`pantallaBloqueada`) toggled by the dual-button combination to shield menu parameters from accidental inputs.
 - Structured an indexed data array for preset alarms (`listaAlarmas` and `segundosAlarma`) navigable through a cyclic menu layout while the interface remains locked.
 
-## 2026-06-29
+---
+
+## [0.4.0] - 2026-06-29
 ### Added
 #### Firmware
 - Embedded 8x8 monochrome graphical assets (`lock_icon`, `unlock_icon`, and `heart_icon`) into flash memory using the `PROGMEM` utility macro.
@@ -33,7 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## 2026-06-27
+## [0.3.0] - 2026-06-27
 ### Added
 #### Firmware
 - Migrated timekeeping from software-based `RTC_Millis` to hardware-based `RTC_DS3231` for high-precision PCB timing.
@@ -43,7 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## 2026-06-25
+## [0.2.0] - 2026-06-25
 ### Added
 #### Firmware
 - Integrated digital clock functionality using the DS3231 RTC module and `millis()` for timekeeping.
@@ -56,7 +60,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## 2026-06-17
+## [0.1.0] - 2026-06-17
 ### Added
 #### Documentation
 - Created `docs/` directory for project reference materials.
@@ -108,3 +112,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### Documentation
 - Exported the schematic PDF from Fusion 360.
 - Added the generated file to the `exports/` directory.
+
+[Unreleased]: https://github.com/lamunuwa/diy-smartwatch/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/lamunuwa/diy-smartwatch/releases/tag/v1.0.0
+[0.5.0]: https://github.com/lamunuwa/diy-smartwatch/compare/v0.4.0...v0.5.0
+[0.4.0]: https://github.com/lamunuwa/diy-smartwatch/compare/v0.3.0...v0.4.0
+[0.3.0]: https://github.com/lamunuwa/diy-smartwatch/compare/v0.2.0...v0.3.0
+[0.2.0]: https://github.com/lamunuwa/diy-smartwatch/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/lamunuwa/diy-smartwatch/releases/tag/v0.1.0
