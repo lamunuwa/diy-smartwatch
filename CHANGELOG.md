@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.0.0] - 2026-06-29 [RELEASED]
+## [v1.0.0] - 2026-06-29 [RELEASED]
 ### Added
 #### Firmware
 - Integrated full hardware support for the `MAX30100_PulseOximeter` sensor with asynchronous sampling every 500ms and active power management (`shutdown`/`begin`) during menu transitions.
@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.5.0] - 2026-06-29
+## [v0.5.0] - 2026-06-29
 ### Added
 #### Firmware
 - Developed an interface lock screen safety state machine (`pantallaBloqueada`) toggled by the dual-button combination to shield menu parameters from accidental inputs.
@@ -29,7 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.4.0] - 2026-06-29
+## [v0.4.0] - 2026-06-29
 ### Added
 #### Firmware
 - Embedded 8x8 monochrome graphical assets (`lock_icon`, `unlock_icon`, and `heart_icon`) into flash memory using the `PROGMEM` utility macro.
@@ -37,7 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.3.0] - 2026-06-27
+## [v0.3.0] - 2026-06-27
 ### Added
 #### Firmware
 - Migrated timekeeping from software-based `RTC_Millis` to hardware-based `RTC_DS3231` for high-precision PCB timing.
@@ -47,7 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.2.0] - 2026-06-25
+## [v0.2.0] - 2026-06-25
 ### Added
 #### Firmware
 - Integrated digital clock functionality using the DS3231 RTC module and `millis()` for timekeeping.
@@ -60,7 +60,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.1.0] - 2026-06-17
+## [v0.1.0] - 2026-06-17
 ### Added
 #### Documentation
 - Created `docs/` directory for project reference materials.
