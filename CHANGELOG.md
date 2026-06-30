@@ -6,6 +6,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 2026-06-29
+### Added
+#### Firmware
+- Integrated full hardware support for the `MAX30100_PulseOximeter` sensor with asynchronous sampling every 500ms and active power management (`shutdown`/`begin`) during menu transitions.
+- Implemented aggressive power-saving via ESP32 Light Sleep (`esp_light_sleep_start`), triggered automatically after 15 seconds of system inactivity.
+- Configured dynamic wake-up sources via external GPIO interrupts (`ext0` on GPIO 26 and `ext1` on BTN_ATRAS) to wake the device from sleep mode seamlessly.
+- Added a 1000ms long-press action on `BTN_ATRAS` to trigger, monitor, and cancel active alarm countdowns.
+- Integrated hardware control for the haptic vibration motor (`MOTOR_PIN`) with a 1-second immune active-pulse window to avoid inductive button noise.
+- Created a `platformio/` workspace directory inside `firmware/` containing the fully configured project environment, allowing users to clone, compile, and flash directly.
+
+#### Documentation
+- Added `IRL.jpeg` to `docs/images/` featuring an unedited reference photo of the fully assembled and operational hardware prototype.
+
+## 2026-06-29
+### Added
+#### Firmware
+- Developed an interface lock screen safety state machine (`pantallaBloqueada`) toggled by the dual-button combination to shield menu parameters from accidental inputs.
+- Structured an indexed data array for preset alarms (`listaAlarmas` and `segundosAlarma`) navigable through a cyclic menu layout while the interface remains locked.
+
+## 2026-06-29
+### Added
+#### Firmware
+- Embedded 8x8 monochrome graphical assets (`lock_icon`, `unlock_icon`, and `heart_icon`) into flash memory using the `PROGMEM` utility macro.
+- Implemented a dual-button asynchronous tolerance window (80ms) to securely process simultaneous button presses without blocking CPU cycles or using heavy debouncing delays.
+
+---
+
 ## 2026-06-27
 ### Added
 #### Firmware
@@ -46,6 +73,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### Documentation
 - Exported a 3D view PDF (`3D.pdf`) showing both sides of the PCB layout, saved in `hardware/exports/`.
 
+---
+
 ## 2026-06-11
 ### Added
 #### Hardware Layout
@@ -57,6 +86,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### Documentation
 - Exported the layout PDF from Fusion 360.
 - Added the generated file to the `exports/` directory.
+
+---
 
 ## 2026-06-09
 ### Added
